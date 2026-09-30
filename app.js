@@ -326,6 +326,8 @@
     audio.addEventListener("timeupdate", tick);
     audio.addEventListener("loadedmetadata", tick);
     audio.addEventListener("play", label_);
+    audio.addEventListener("playing", label_);
+    audio.addEventListener("waiting", () => { if (!audio.paused) btn.textContent = "A carregar…"; });
     audio.addEventListener("pause", label_);
     audio.addEventListener("ended", () => {
       played = true; seekable(); label_(); tick();
