@@ -8,5 +8,5 @@ window.STUDY_CONFIG = {
   researcher: "Diogo Faria Gonçalves",
   institution: "Instituto Superior Técnico, Universidade de Lisboa",
   minutes: 20,
-  audioMB: 150,
+  audioMB: 120,          // 30 excerpts of ~3.8 MB + the volume clip
 };

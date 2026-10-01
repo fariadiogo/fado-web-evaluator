@@ -2,16 +2,6 @@
  "excerpt_s": 20.0,
  "sample_rate": 48000,
  "loudness_lufs": -23.0,
- "shared": {
-  "page": "p60e7a1",
-  "clips": [
-   "07a0ca6e",
-   "0822e8f3",
-   "17fc695a",
-   "6c031199",
-   "972a8469"
-  ]
- },
  "lists": {
   "A": [
    {

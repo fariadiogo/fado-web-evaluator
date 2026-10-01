@@ -1,14 +1,14 @@
 // Listening study page (LISTENING_STUDY.md §3). Plain JS, no dependencies.
-// Flow: welcome/consent -> profile -> volume -> instructions -> 7 rating pages (the rater's list
-// + the shared prompt, random order) -> closing questions -> thanks. Answers are sent page by page to the
+// Flow: welcome/consent -> profile -> volume -> instructions -> 6 rating pages (the rater's list,
+// random order) -> closing questions -> thanks. Answers are sent page by page to the
 // endpoint in config.js (a Google Apps Script web app); progress is kept in localStorage so a
 // reload resumes where the rater stopped.
 (function () {
   "use strict";
 
   const CFG = window.STUDY_CONFIG || {};
-  const STATE_KEY = "fado-listening-state-v4";
-  const QUEUE_KEY = "fado-listening-queue-v4";
+  const STATE_KEY = "fado-listening-state-v5";   // v5: no shared page (a saved v4 state would
+  const QUEUE_KEY = "fado-listening-queue-v5";    // point to clips that no longer exist)
   const params = new URLSearchParams(location.search);
   const MODE = ["pilot", "test"].includes(params.get("mode")) ? params.get("mode") : "live";
   const FORCED_LIST = ["A", "B"].includes(params.get("list")) ? params.get("list") : null;
@@ -173,9 +173,8 @@
   }
 
   function buildPages(list) {
-    const rating = shuffle([STIM.shared].concat(STIM.lists[list]))
+    return shuffle(STIM.lists[list])
       .map(p => ({ kind: "rating", page: p.page, clips: shuffle(p.clips), repeat: false }));
-    return rating;
   }
 
   // ---------------------------------------------------------------- screens
