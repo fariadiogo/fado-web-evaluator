@@ -1,14 +1,14 @@
 // Listening study page (LISTENING_STUDY.md §3). Plain JS, no dependencies.
 // Flow: welcome/consent -> profile -> volume -> instructions -> 7 rating pages (the rater's list
-// + the shared prompt, random order) + 1 repeated page -> closing questions -> thanks. Answers are sent page by page to the
+// + the shared prompt, random order) -> closing questions -> thanks. Answers are sent page by page to the
 // endpoint in config.js (a Google Apps Script web app); progress is kept in localStorage so a
 // reload resumes where the rater stopped.
 (function () {
   "use strict";
 
   const CFG = window.STUDY_CONFIG || {};
-  const STATE_KEY = "fado-listening-state-v2";
-  const QUEUE_KEY = "fado-listening-queue-v2";
+  const STATE_KEY = "fado-listening-state-v3";
+  const QUEUE_KEY = "fado-listening-queue-v3";
   const params = new URLSearchParams(location.search);
   const MODE = ["pilot", "test"].includes(params.get("mode")) ? params.get("mode") : "live";
   const FORCED_LIST = ["A", "B"].includes(params.get("list")) ? params.get("list") : null;
@@ -172,10 +172,6 @@
   function buildPages(list) {
     const rating = shuffle([STIM.shared].concat(STIM.lists[list]))
       .map(p => ({ kind: "rating", page: p.page, clips: shuffle(p.clips), repeat: false }));
-    const again = rating[Math.floor(Math.random() * rating.length)];
-    let clips = shuffle(again.clips);
-    for (let i = 0; i < 20 && clips.join() === again.clips.join(); i++) clips = shuffle(again.clips);
-    rating.push({ kind: "rating", page: again.page, clips, repeat: true });
     return rating;
   }
 
