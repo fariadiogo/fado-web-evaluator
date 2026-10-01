@@ -7,8 +7,8 @@
   "use strict";
 
   const CFG = window.STUDY_CONFIG || {};
-  const STATE_KEY = "fado-listening-state-v3";
-  const QUEUE_KEY = "fado-listening-queue-v3";
+  const STATE_KEY = "fado-listening-state-v4";
+  const QUEUE_KEY = "fado-listening-queue-v4";
   const params = new URLSearchParams(location.search);
   const MODE = ["pilot", "test"].includes(params.get("mode")) ? params.get("mode") : "live";
   const FORCED_LIST = ["A", "B"].includes(params.get("list")) ? params.get("list") : null;
@@ -21,6 +21,9 @@
   const QUESTIONS = [
     { key: "fado", legend: "Até que ponto isto soa a fado?",
       hint: "Pense no género, não na qualidade da gravação.",
+      options: [[1, "Nada"], [2, "Pouco"], [3, "Moderadamente"], [4, "Bastante"], [5, "Completamente"]] },
+    { key: "voice", legend: "Até que ponto a voz soa a fado?",
+      hint: "Pense só na forma de cantar, não no acompanhamento.",
       options: [[1, "Nada"], [2, "Pouco"], [3, "Moderadamente"], [4, "Bastante"], [5, "Completamente"]] },
     { key: "intel", legend: "Consegue perceber as palavras cantadas?",
       hint: "Se não houver voz, ou se não perceber nenhuma palavra, escolha «Nenhuma».",
@@ -198,7 +201,7 @@
       <p>Este estudo faz parte da dissertação de mestrado de
       ${CFG.researcher || ""} (${CFG.institution || ""}), sobre a geração automática de fado por computador.</p>
       <div class="card">
-        <p><b>O que vai fazer.</b> Ouvir excertos de fado com cerca de 20 segundos e responder a quatro perguntas curtas
+        <p><b>O que vai fazer.</b> Ouvir excertos de fado com cerca de 20 segundos e responder a cinco perguntas curtas
         sobre cada um. Alguns excertos são gravações reais; outros foram gerados por computador.</p>
         <p><b>Duração.</b> Cerca de ${CFG.minutes || 20} minutos, de seguida.</p>
         <p><b>Do que precisa.</b> Auscultadores ou auriculares, um local sossegado e, de preferência, uma ligação Wi-Fi
@@ -356,9 +359,10 @@
       <p>Ouça cada excerto <b>até ao fim</b>: só depois pode responder. Pode voltar a ouvi-los as vezes que quiser e
       compará-los entre si antes de responder.</p>
       <div class="card">
-        <p><b>Para cada excerto, responda a quatro perguntas:</b></p>
+        <p><b>Para cada excerto, responda a cinco perguntas:</b></p>
         <ol>
           <li><b>Até que ponto isto soa a fado?</b> Pense no género, não na qualidade da gravação.</li>
+          <li><b>Até que ponto a voz soa a fado?</b> Pense só na forma de cantar, não no acompanhamento.</li>
           <li><b>Consegue perceber as palavras cantadas?</b> Se não houver voz, ou se não perceber nenhuma palavra,
           escolha «Nenhuma».</li>
           <li><b>Qualidade geral, enquanto música:</b> a sua impressão global do excerto.</li>
@@ -381,7 +385,7 @@
     progressEl.textContent = `Página ${idx + 1} de ${n}`;
     app.innerHTML = `
       <h1>Página ${idx + 1} de ${n}</h1>
-      <p class="muted">Ouça os cinco excertos até ao fim e responda às quatro perguntas de cada um.</p>
+      <p class="muted">Ouça os cinco excertos até ao fim e responda às cinco perguntas de cada um.</p>
       <div id="clips"></div>
       <div class="actions"><button class="btn" id="next" disabled>${idx === n - 1 ? "Continuar" : "Seguinte"}</button>
         <span class="missing" id="missing"></span></div>`;
