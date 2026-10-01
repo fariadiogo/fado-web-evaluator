@@ -1,14 +1,14 @@
 // Listening study page (LISTENING_STUDY.md §3). Plain JS, no dependencies.
-// Flow: welcome/consent -> profile -> volume -> instructions -> practice page -> 6 rating pages
-// + 1 repeated page -> closing questions -> thanks. Answers are sent page by page to the
+// Flow: welcome/consent -> profile -> volume -> instructions -> 7 rating pages (the rater's list
+// + the shared prompt, random order) + 1 repeated page -> closing questions -> thanks. Answers are sent page by page to the
 // endpoint in config.js (a Google Apps Script web app); progress is kept in localStorage so a
 // reload resumes where the rater stopped.
 (function () {
   "use strict";
 
   const CFG = window.STUDY_CONFIG || {};
-  const STATE_KEY = "fado-listening-state-v1";
-  const QUEUE_KEY = "fado-listening-queue-v1";
+  const STATE_KEY = "fado-listening-state-v2";
+  const QUEUE_KEY = "fado-listening-queue-v2";
   const params = new URLSearchParams(location.search);
   const MODE = ["pilot", "test"].includes(params.get("mode")) ? params.get("mode") : "live";
   const FORCED_LIST = ["A", "B"].includes(params.get("list")) ? params.get("list") : null;
@@ -28,9 +28,10 @@
     { key: "quality", legend: "Qualidade geral, enquanto música",
       hint: "",
       options: [[1, "Má"], [2, "Fraca"], [3, "Razoável"], [4, "Boa"], [5, "Excelente"]] },
-    { key: "guitar", legend: "Ouve uma guitarra portuguesa?",
-      hint: "",
-      options: [["sim", "Sim"], ["nao", "Não"], ["nao_sei", "Não sei"]] },
+    { key: "lang", legend: "Em que língua é cantada a letra?",
+      hint: "Se não houver voz, ou se não conseguir perceber, escolha «Não consigo dizer».",
+      options: [["pt-PT", "Português de Portugal"], ["pt-BR", "Português do Brasil"],
+                ["outra", "Outra língua"], ["nao_sei", "Não consigo dizer"]] },
   ];
 
   let STIM = null;          // stimuli.json
@@ -169,13 +170,13 @@
   }
 
   function buildPages(list) {
-    const practice = { kind: "practice", page: STIM.practice.page, clips: shuffle(STIM.practice.clips), repeat: false };
-    const rating = shuffle(STIM.lists[list]).map(p => ({ kind: "rating", page: p.page, clips: shuffle(p.clips), repeat: false }));
+    const rating = shuffle([STIM.shared].concat(STIM.lists[list]))
+      .map(p => ({ kind: "rating", page: p.page, clips: shuffle(p.clips), repeat: false }));
     const again = rating[Math.floor(Math.random() * rating.length)];
     let clips = shuffle(again.clips);
     for (let i = 0; i < 20 && clips.join() === again.clips.join(); i++) clips = shuffle(again.clips);
     rating.push({ kind: "rating", page: again.page, clips, repeat: true });
-    return [practice].concat(rating);
+    return rating;
   }
 
   // ---------------------------------------------------------------- screens
@@ -198,12 +199,12 @@
       ? `<p>Para qualquer questão, contacte <a href="mailto:${CFG.contactEmail}">${CFG.contactEmail}</a>.</p>` : "";
     app.innerHTML = `
       <h1>Estudo de audição sobre fado</h1>
-      <p>Obrigado pelo interesse em participar. Este estudo faz parte da dissertação de mestrado de
+      <p>Este estudo faz parte da dissertação de mestrado de
       ${CFG.researcher || ""} (${CFG.institution || ""}), sobre a geração automática de fado por computador.</p>
       <div class="card">
         <p><b>O que vai fazer.</b> Ouvir excertos de fado com cerca de 20 segundos e responder a quatro perguntas curtas
         sobre cada um. Alguns excertos são gravações reais; outros foram gerados por computador.</p>
-        <p><b>Duração.</b> Cerca de ${CFG.minutes || 25} minutos, de seguida.</p>
+        <p><b>Duração.</b> Cerca de ${CFG.minutes || 20} minutos, de seguida.</p>
         <p><b>Do que precisa.</b> Auscultadores ou auriculares, um local sossegado e, de preferência, uma ligação Wi-Fi
         (são cerca de ${CFG.audioMB || 150} MB de áudio). Funciona no computador e no telemóvel.</p>
         <p><b>Anonimato.</b> Não pedimos nome, e-mail nem outros dados que o identifiquem. As respostas são usadas
@@ -239,9 +240,6 @@
         ${["18-24", "25-34", "35-44", "45-54", "55-64", "65+"].map(v =>
           `<option value="${v}"${P.age === v ? " selected" : ""}>${v.replace("-", " a ").replace("65+", "65 ou mais")}</option>`).join("")}
         </select></div>
-      <div class="field"><span class="label">Língua materna</span>
-        ${radios("language", [["pt-PT", "Português de Portugal"], ["pt-BR", "Português do Brasil"],
-          ["pt-other", "Português de outro país"], ["other", "Outra língua"]], "list", P.language)}</div>
       <div class="field"><span class="label">Qual é a sua familiaridade com o fado?</span>
         <span class="hint">1 = nunca ouço fado; 5 = ouço com frequência e conheço bem o género.</span>
         ${scale5("familiarity", [[1, "Nenhuma"], [2, "Pouca"], [3, "Alguma"], [4, "Bastante"], [5, "Muita"]], P.familiarity)}</div>
@@ -249,8 +247,6 @@
         ${radios("training", [["none", "Nenhuma"], ["lt5", "Menos de 5 anos"], ["ge5", "5 anos ou mais"]], "list", P.training)}</div>
       <div class="field"><span class="label">Canta ou toca fado, mesmo que de forma amadora?</span>
         ${radios("plays_fado", [["sim", "Sim"], ["nao", "Não"]], "n2", P.plays_fado)}</div>
-      <div class="field"><span class="label">Já tinha ouvido algum excerto gerado neste projeto?</span>
-        ${radios("heard_before", [["sim", "Sim"], ["nao", "Não"], ["nao_sei", "Não sei"]], "n3", P.heard_before)}</div>
       <div class="field"><span class="label">Como vai ouvir os excertos?</span>
         ${radios("device", [["headphones", "Auscultadores (por cima ou à volta das orelhas)"],
           ["earphones", "Auriculares (dentro do ouvido)"],
@@ -261,8 +257,8 @@
     const btn = app.querySelector("#next"), warn = app.querySelector("#speakers");
     const read = () => ({
       age: app.querySelector('select[name="age"]').value || null,
-      language: value("language"), familiarity: value("familiarity"), training: value("training"),
-      plays_fado: value("plays_fado"), heard_before: value("heard_before"), device: value("device"),
+      familiarity: value("familiarity"), training: value("training"),
+      plays_fado: value("plays_fado"), device: value("device"),
     });
     const check = () => {
       const p = read();
@@ -348,7 +344,7 @@
       <div class="card" id="player"></div>
       <label class="check"><input type="checkbox" id="ok"><span>Ajustei o volume.</span></label>
       <div class="actions"><button class="btn" id="next" disabled>Continuar</button></div>`;
-    app.querySelector("#player").appendChild(playerCard(STIM.practice.clips[0], "", { played: false }));
+    app.querySelector("#player").appendChild(playerCard("calibration", "", { played: false }));
     const box = app.querySelector("#ok"), btn = app.querySelector("#next");
     box.addEventListener("change", () => { btn.disabled = !box.checked; });
     btn.addEventListener("click", () => go("instructions"));
@@ -356,7 +352,7 @@
 
   function instructions() {
     progressEl.textContent = "";
-    const n = S.pages.length - 1;
+    const n = S.pages.length;
     app.innerHTML = `
       <h1>Como funciona</h1>
       <p>Cada página corresponde a uma canção e tem cinco excertos, de A a E. Alguns podem ser gravações reais e outros
@@ -370,29 +366,28 @@
           <li><b>Consegue perceber as palavras cantadas?</b> Se não houver voz, ou se não perceber nenhuma palavra,
           escolha «Nenhuma».</li>
           <li><b>Qualidade geral, enquanto música:</b> a sua impressão global do excerto.</li>
-          <li><b>Ouve uma guitarra portuguesa?</b> Se não tiver a certeza, escolha «Não sei».</li>
+          <li><b>Em que língua é cantada a letra?</b> Se não houver voz, ou se não conseguir perceber, escolha
+          «Não consigo dizer».</li>
         </ol>
       </div>
       <p>Não há respostas certas nem erradas: interessa a sua opinião.</p>
-      <p>A primeira página é de treino, para se habituar. Seguem-se ${n} páginas.</p>
-      <div class="actions"><button class="btn" id="next">Começar o treino</button></div>`;
+      <p>São ${n} páginas. Em cada uma, ouça primeiro os cinco excertos e só depois responda: compará-los ajuda a
+      usar a escala da mesma forma em todas as páginas.</p>
+      <div class="actions"><button class="btn" id="next">Começar</button></div>`;
     app.querySelector("#next").addEventListener("click", () => { S.pageIdx = 0; go("page"); });
   }
 
   function page() {
-    const idx = S.pageIdx, P = S.pages[idx], n = S.pages.length - 1;
+    const idx = S.pageIdx, P = S.pages[idx], n = S.pages.length;
     const A = S.answers[idx] = S.answers[idx] ||
       { t0: Date.now(), played: {}, plays: {}, full: {}, r: {} };
     save();
-    const practice = P.kind === "practice";
-    progressEl.textContent = practice ? "Treino" : `Página ${idx} de ${n}`;
+    progressEl.textContent = `Página ${idx + 1} de ${n}`;
     app.innerHTML = `
-      <h1>${practice ? "Página de treino" : `Página ${idx} de ${n}`}</h1>
-      <p class="muted">${practice
-        ? "Esta página serve para se habituar ao funcionamento; as respostas não são analisadas."
-        : "Ouça os cinco excertos até ao fim e responda às quatro perguntas de cada um."}</p>
+      <h1>Página ${idx + 1} de ${n}</h1>
+      <p class="muted">Ouça os cinco excertos até ao fim e responda às quatro perguntas de cada um.</p>
       <div id="clips"></div>
-      <div class="actions"><button class="btn" id="next" disabled>${idx === n ? "Continuar" : "Seguinte"}</button>
+      <div class="actions"><button class="btn" id="next" disabled>${idx === n - 1 ? "Continuar" : "Seguinte"}</button>
         <span class="missing" id="missing"></span></div>`;
     const box = app.querySelector("#clips");
     P.clips.forEach((id, i) => {
@@ -404,7 +399,7 @@
           <legend>${q.legend}</legend>
           ${q.options.length === 5
             ? scale5(`${idx}-${id}-${q.key}`, q.options, A.r[id][q.key])
-            : radios(`${idx}-${id}-${q.key}`, q.options, "n3", A.r[id][q.key])}
+            : radios(`${idx}-${id}-${q.key}`, q.options, "n4", A.r[id][q.key])}
         </fieldset>`).join("");
       card.appendChild(playerCard(id, L, {
         played: A.played[id],
@@ -453,7 +448,7 @@
           plays: A.plays[id] || 0, full_plays: A.full[id] || 0,
         }, A.r[id])),
       });
-      if (idx < n) { S.pageIdx = idx + 1; go("page"); }
+      if (idx < n - 1) { S.pageIdx = idx + 1; go("page"); }
       else go("closing");
     });
   }
@@ -499,17 +494,22 @@
   }
 
   function done() {
+    // The thanks appear only once every answer has reached the server; until then the page asks
+    // the rater to wait (and the browser warns before the page is closed, see beforeunload).
     progressEl.textContent = "";
     const pending = (readJSON(QUEUE_KEY) || []).length;
-    app.innerHTML = `
-      <h1>Obrigado pela sua participação!</h1>
-      ${pending
-        ? `<p class="warn">A enviar as respostas (${pending} em falta)… Por favor, não feche esta página até esta mensagem
-           desaparecer.</p>`
-        : `<p>As suas respostas foram registadas. Já pode fechar esta página.</p>`}
-      <p class="muted">Se quiser, partilhe o estudo com outras pessoas que falem português, mas não lhes conte o que
-      ouviu: a opinião de cada pessoa deve ser independente.</p>`;
+    app.innerHTML = pending
+      ? `<h1>A guardar as suas respostas…</h1>
+         <p class="warn"><b>Não feche esta página.</b> Falta enviar ${pending === 1 ? "1 parte" : pending + " partes"} das
+         respostas; normalmente demora poucos segundos. Esta mensagem muda quando tudo estiver guardado.</p>`
+      : `<h1>Obrigado pela sua participação!</h1>
+         <p>As suas respostas foram guardadas. Já pode fechar esta página.</p>
+         <p class="muted">Se quiser, partilhe o estudo com outras pessoas, mas não lhes conte o que
+         ouviu: a opinião de cada pessoa deve ser independente.</p>`;
   }
+  window.addEventListener("beforeunload", ev => {
+    if ((readJSON(QUEUE_KEY) || []).length) { ev.preventDefault(); ev.returnValue = ""; }
+  });
 
   // ---------------------------------------------------------------- start
   async function main() {

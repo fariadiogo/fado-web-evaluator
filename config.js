@@ -7,6 +7,6 @@ window.STUDY_CONFIG = {
   contactEmail: "faria.goncalves.diogo@gmail.com",
   researcher: "Diogo Faria Gonçalves",
   institution: "Instituto Superior Técnico, Universidade de Lisboa",
-  minutes: 25,
+  minutes: 20,
   audioMB: 150,
 };

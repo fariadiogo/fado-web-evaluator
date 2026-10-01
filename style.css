@@ -91,6 +91,7 @@ textarea { max-width: 100%; min-height: 90px; resize: vertical; }
 .options.n5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .options.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 420px; }
 .options.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 280px; }
+.options.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .options.list { grid-template-columns: 1fr; max-width: 520px; }
 .opt { position: relative; }
 .opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -151,4 +152,5 @@ fieldset:disabled .opt span { opacity: 0.45; cursor: not-allowed; }
   .opt span b { font-size: 14px; }
   .play { min-width: 0; flex: 1 1 auto; }
   .meter { flex-basis: 100%; }
+  .options.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

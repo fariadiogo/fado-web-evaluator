@@ -2,7 +2,7 @@
  "excerpt_s": 20.0,
  "sample_rate": 48000,
  "loudness_lufs": -23.0,
- "practice": {
+ "shared": {
   "page": "p60e7a1",
   "clips": [
    "07a0ca6e",
