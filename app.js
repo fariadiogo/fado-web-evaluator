@@ -123,20 +123,17 @@
       return true;
     }
     const headers = { "Content-Type": "text/plain;charset=utf-8" };
+    // keepalive lets the request finish if the tab is closed meanwhile (browsers cap it at 64 KB)
+    const keepalive = body.length < 60000;
     try {
-      const r = await fetchWithTimeout(CFG.endpoint, { method: "POST", headers, body }, 15000);
+      const r = await fetchWithTimeout(CFG.endpoint, { method: "POST", headers, body, keepalive }, 20000);
       if (!r.ok) return false;
-      const j = await r.json().catch(() => ({ ok: true }));
-      return j.ok !== false;
+      // Only an explicit {ok: true} counts as stored: an Apps Script crash answers 200 with an
+      // HTML page, which must be retried, not dropped. The endpoint allows CORS, so it is readable.
+      const j = await r.json();
+      return j.ok === true;
     } catch (e) {
-      // The response may be unreadable (CORS) although the request arrived; send again
-      // without reading the answer. The uid makes this safe.
-      try {
-        await fetchWithTimeout(CFG.endpoint, { method: "POST", mode: "no-cors", headers, body }, 15000);
-        return true;
-      } catch (e2) {
-        return false;
-      }
+      return false;
     }
   }
   async function flush() {
@@ -147,6 +144,9 @@
       const ok = await post(queue[0]);
       if (!ok) {
         setStatus("Sem ligação ao servidor: as respostas ficam guardadas neste navegador e serão enviadas assim que possível.");
+        const note = app.querySelector("#sending");
+        if (note) note.textContent = "Sem ligação ao servidor. As suas respostas estão guardadas neste " +
+          "navegador e o envio é repetido automaticamente; por favor não feche a página.";
         flushing = false;
         setTimeout(flush, 8000);
         return;
@@ -157,7 +157,7 @@
     }
     flushing = false;
     setStatus("");
-    if (S && S.step === "done") render();
+    if (S && S.step === "closing" && S.finishing) go("done");
   }
 
   async function assignList() {
@@ -481,30 +481,37 @@
       which.hidden = S.closing.recognized !== "sim";
       btn.disabled = !S.closing.recognized;
     };
+    check();
+    if (S.finishing) {
+      // Enviar was clicked: the button waits until flush() has every answer stored, then
+      // flush() moves on to the thanks (the browser warns before the page is closed meanwhile)
+      app.querySelectorAll("input, textarea").forEach(x => { x.disabled = true; });
+      btn.disabled = true;
+      btn.textContent = "A enviar…";
+      app.querySelector(".actions").insertAdjacentHTML("afterend",
+        `<p id="sending" class="muted">A guardar as suas respostas…</p>`);
+      return;
+    }
     app.addEventListener("input", check);
     app.addEventListener("change", check);
-    check();
     btn.addEventListener("click", () => {
+      S.finishing = true;
+      save();
       send("finish", Object.assign({
         uid: `${S.session}-finish`, total_seconds: Math.round((Date.now() - S.startedMs) / 1000),
       }, S.closing));
-      go("done");
+      render();
     });
   }
 
   function done() {
-    // The thanks appear only once every answer has reached the server; until then the page asks
-    // the rater to wait (and the browser warns before the page is closed, see beforeunload).
+    // reached only from flush(), once the server has confirmed every answer
     progressEl.textContent = "";
-    const pending = (readJSON(QUEUE_KEY) || []).length;
-    app.innerHTML = pending
-      ? `<h1>A guardar as suas respostas…</h1>
-         <p class="warn"><b>Não feche esta página.</b> Falta enviar ${pending === 1 ? "1 parte" : pending + " partes"} das
-         respostas; normalmente demora poucos segundos. Esta mensagem muda quando tudo estiver guardado.</p>`
-      : `<h1>Obrigado pela sua participação!</h1>
-         <p>As suas respostas foram guardadas. Já pode fechar esta página.</p>
-         <p class="muted">Se quiser, partilhe o estudo com outras pessoas, mas não lhes conte o que
-         ouviu: a opinião de cada pessoa deve ser independente.</p>`;
+    app.innerHTML = `
+      <h1>Obrigado pela sua participação!</h1>
+      <p>As suas respostas foram guardadas. Já pode fechar esta página.</p>
+      <p class="muted">Se quiser, partilhe o estudo com outras pessoas, mas não lhes conte o que
+      ouviu: a opinião de cada pessoa deve ser independente.</p>`;
   }
   window.addEventListener("beforeunload", ev => {
     if ((readJSON(QUEUE_KEY) || []).length) { ev.preventDefault(); ev.returnValue = ""; }
@@ -525,6 +532,8 @@
     }
     S = readJSON(STATE_KEY) || { step: "welcome" };
     if (S.step !== "welcome" && !S.session) S = { step: "welcome" };
+    // a state saved by the previous version on its waiting screen: wait on the button instead
+    if (S.step === "done" && (readJSON(QUEUE_KEY) || []).length) Object.assign(S, { step: "closing", finishing: true });
     render();
     flush();
   }
