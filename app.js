@@ -203,7 +203,8 @@
         <p><b>O que vai fazer.</b> Ouvir excertos de fado com cerca de 20 segundos e responder a cinco perguntas curtas
         sobre cada um. Alguns excertos são gravações reais; outros foram gerados por computador.</p>
         <p><b>Duração.</b> Cerca de ${CFG.minutes || 20} minutos, de seguida.</p>
-        <p><b>Do que precisa.</b> Auscultadores ou auriculares, um local sossegado e, de preferência, uma ligação Wi-Fi
+        <p><b>Do que precisa.</b> Pedimos-lhe que use auscultadores ou auriculares; se não os tiver consigo, pode ouvir
+        pelas colunas, desde que esteja num local silencioso. De preferência, use uma ligação Wi-Fi
         (são cerca de ${CFG.audioMB || 150} MB de áudio). Funciona no computador e no telemóvel.</p>
         <p><b>Anonimato.</b> Não pedimos nome, e-mail nem outros dados que o identifiquem. As respostas são usadas
         apenas para fins de investigação, nesta dissertação.</p>
@@ -249,8 +250,9 @@
         ${radios("device", [["headphones", "Auscultadores (por cima ou à volta das orelhas)"],
           ["earphones", "Auriculares (dentro do ouvido)"],
           ["speakers", "Colunas do computador, do telemóvel ou outras"]], "list", P.device)}</div>
-      <p class="warn" id="speakers" hidden>Este estudo precisa de auscultadores ou auriculares. Se puder, ligue-os e altere a
-        resposta acima; se não, pode voltar mais tarde a esta página.</p>
+      <p class="warn" id="speakers" hidden>Pedimos que use auscultadores ou auriculares: com eles, as diferenças entre os
+        excertos ouvem-se melhor. Se puder, ligue-os e altere a resposta acima. Se não, pode continuar com as colunas,
+        desde que esteja num local silencioso.</p>
       <div class="actions"><button class="btn" id="next" disabled>Continuar</button></div>`;
     const btn = app.querySelector("#next"), warn = app.querySelector("#speakers");
     const read = () => ({
@@ -262,7 +264,7 @@
       const p = read();
       S.profile = p; save();
       warn.hidden = p.device !== "speakers";
-      btn.disabled = Object.values(p).some(v => !v) || p.device === "speakers";
+      btn.disabled = Object.values(p).some(v => !v);
     };
     app.addEventListener("change", check);
     check();
@@ -337,7 +339,7 @@
     progressEl.textContent = "";
     app.innerHTML = `
       <h1>Volume</h1>
-      <p>Coloque os auscultadores ou auriculares. Carregue em «Ouvir» e ajuste o volume do seu dispositivo para um nível
+      <p>${(S.profile || {}).device === "speakers" ? "" : "Coloque os auscultadores ou auriculares. "}Carregue em «Ouvir» e ajuste o volume do seu dispositivo para um nível
       confortável. <b>Depois disso, não altere o volume até ao fim do estudo.</b></p>
       <div class="card" id="player"></div>
       <label class="check"><input type="checkbox" id="ok"><span>Ajustei o volume.</span></label>
